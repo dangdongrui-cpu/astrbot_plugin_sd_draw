@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>sd_draw 密码</title>
+<style>
+  :root { --ink:#1d1d1f; --sub:#86868b; --line:#d2d2d7; --accent:#0066cc; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; background:#fbfbfd; color:var(--ink); min-height:100vh; display:flex; align-items:center; justify-content:center; }
+  .card { width:min(360px,86vw); padding:48px 32px; }
+  h1 { font-size:28px; font-weight:600; letter-spacing:-0.02em; margin-bottom:8px; }
+  p.desc { color:var(--sub); font-size:14px; line-height:1.6; margin-bottom:40px; }
+  input { width:100%; font-size:16px; padding:12px 14px; border:1px solid var(--line); border-radius:10px; outline:none; background:#fff; }
+  input:focus { border-color:var(--accent); }
+  button { width:100%; margin-top:20px; font-size:16px; padding:12px; border:none; border-radius:10px; background:var(--accent); color:#fff; cursor:pointer; }
+  button:disabled { opacity:.5; }
+  .err { color:#d70015; font-size:13px; margin-top:12px; min-height:18px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>sd_draw</h1>
+  <p class="desc">本地 SD 生图插件管理台。密码在 AstrBot 日志里，第一次进来务必改掉。</p>
+  <input id="token" type="password" placeholder="输入访问密码" autocomplete="off">
+  <button id="btn">进入</button>
+  <div class="err" id="err"></div>
+</div>
+<script>
+const btn = document.getElementById("btn");
+btn.onclick = async () => {
+  btn.disabled = true;
+  const tok = document.getElementById("token").value.trim();
+  const r = await fetch("/api/check", { headers: { "X-Sd-Token": tok }, method: "POST" });
+  const j = await r.json();
+  if (j.status === "error" || j.ok !== true) {
+    document.getElementById("err").textContent = "密码不对，进不去哦";
+    btn.disabled = false;
+    return;
+  }
+  document.cookie = "sd_token=" + encodeURIComponent(tok) + "; path=/";
+  location.href = "/";
+};
+</script>
+</body>
+</html>
