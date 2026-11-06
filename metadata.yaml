@@ -1,0 +1,11 @@
+name: astrbot_plugin_sd_draw
+desc: 群聊文生图插件：/draw 一句话出图，支持 WebUI / ComfyUI / OpenAI 兼容接口，含润色确认、每日配额与可视化管理页。
+help: /draw 描述（别名：画）；更多玩法见管理页 http://127.0.0.1:7865/
+version: v0.1.0
+author: dangdongrui-cpu
+repo: "https://github.com/dangdongrui-cpu/astrbot_plugin_sd_draw"
+depends:
+  - astrbot.core
+platform:
+  - aiocqhttp
+config_schema: _conf_schema.json
