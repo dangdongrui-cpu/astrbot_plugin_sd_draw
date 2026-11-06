@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>sd_draw 管理台</title>
+<style>
+  :root{ --ink:#1d1d1f; --sub:#6e6e73; --line:#e3e3e8; --accent:#0071e3; --ok:#34c759; --err:#d70015; --warn:#b25000; --bg:#fafafc; --panel:#fff; }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  body{ font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; background:var(--bg); color:var(--ink); font-size:14px; line-height:1.55; }
+  .app{ display:flex; min-height:100vh; }
+  /* ---------- 左栏 ---------- */
+  nav{ width:190px; flex-shrink:0; background:#f2f2f5; border-right:1px solid var(--line); padding:20px 12px; position:sticky; top:0; height:100vh; overflow:auto; }
+  .brand{ font-size:17px; font-weight:700; letter-spacing:-0.01em; padding:0 10px 18px; }
+  .brand small{ display:block; font-size:11px; font-weight:400; color:var(--sub); margin-top:2px; }
+  .nav-item{ display:block; width:100%; text-align:left; background:none; border:none; padding:9px 10px; border-radius:7px; font-size:13.5px; color:#3a3a3c; cursor:pointer; margin-bottom:2px; }
+  .nav-item:hover{ background:#e7e7ec; }
+  .nav-item.on{ background:var(--panel); color:var(--ink); font-weight:600; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+  .nav-foot{ margin-top:28px; padding:0 10px; display:flex; gap:14px; font-size:12px; color:var(--sub); }
+  .nav-foot a{ color:var(--sub); text-decoration:none; }
+  .nav-foot a:hover{ color:var(--accent); }
+  /* ---------- 内容区 ---------- */
+  main{ flex:1; min-width:0; padding:32px 36px 80px; max-width:1080px; }
+  .page{ display:none; }
+  .page.on{ display:block; }
+  h1{ font-size:24px; font-weight:700; letter-spacing:-0.015em; margin-bottom:4px; }
+  .page p.lead{ color:var(--sub); font-size:13px; margin-bottom:26px; }
+  .blk{ background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:20px 22px; margin-bottom:18px; }
+  .blk h2{ font-size:15px; font-weight:600; margin-bottom:4px; }
+  .blk > p{ color:var(--sub); font-size:12.5px; margin-bottom:16px; }
+  .row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+  .row:last-child{ margin-bottom:0; }
+  .row label{ width:132px; font-size:13px; color:#3a3a3c; flex-shrink:0; }
+  input, select, textarea{ flex:1; min-width:150px; font-size:13.5px; padding:8px 11px; border:1px solid var(--line); border-radius:8px; background:var(--panel); outline:none; }
+  input:focus, select:focus, textarea:focus{ border-color:var(--accent); }
+  input.num{ min-width:70px; flex:0 0 auto; width:88px; }
+  textarea{ font-family:ui-monospace,Consolas,monospace; resize:vertical; }
+  button{ font-size:13px; padding:8px 15px; border:1px solid var(--line); border-radius:8px; background:var(--panel); color:var(--ink); cursor:pointer; }
+  button:hover{ background:#f0f0f4; }
+  button.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  button.primary:hover{ background:#007ced; }
+  button.danger{ color:var(--err); }
+  button.small{ padding:4px 10px; font-size:12px; }
+  .msg{ font-size:12.5px; min-height:18px; }
+  .msg.ok{ color:var(--ok); } .msg.err{ color:var(--err); }
+  .note{ font-size:12px; color:#8e8e93; width:100%; padding-left:142px; margin:-6px 0 10px; }
+  .chips{ display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 10px; }
+  .chip{ font-size:12px; padding:4px 10px; border:1px solid var(--line); border-radius:99px; background:#f7f7fa; color:#515154; cursor:pointer; }
+  .chip:hover{ border-color:var(--accent); color:var(--accent); }
+  table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  th, td{ text-align:left; padding:8px 9px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th{ color:var(--sub); font-weight:500; font-size:12px; }
+  .tag{ display:inline-block; font-size:11px; padding:1px 8px; border-radius:99px; background:#eef2f6; color:#3d4a57; }
+  .tag.deployed{ background:#e8f6ec; color:#1d7a33; }
+  .tag.wait{ background:#fdf3e1; color:#b25000; }
+  .muted{ color:var(--sub); font-size:12.5px; }
+  .dim{ opacity:.45; pointer-events:none; filter:grayscale(.4); }
+  table.dim{ opacity:.5; }
+  pre{ background:#f5f5f7; padding:14px; border-radius:8px; font-size:12px; overflow:auto; max-height:340px; white-space:pre-wrap; }
+  a{ color:var(--accent); text-decoration:none; }
+  /* 折叠卡片 */
+  .mcard{ border:1px solid var(--line); border-radius:10px; margin-bottom:10px; background:var(--panel); }
+  .mcard summary{ list-style:none; cursor:pointer; padding:12px 16px; display:flex; align-items:center; gap:10px; font-size:13.5px; font-weight:600; }
+  .mcard summary::-webkit-details-marker{ display:none; }
+  .mcard summary .arrow{ color:var(--sub); font-size:11px; transition:transform .15s; }
+  .mcard[open] summary .arrow{ transform:rotate(90deg); }
+  .mcard summary .sub{ font-weight:400; color:var(--sub); font-size:12px; }
+  .mcard .body{ padding:0 16px 14px; border-top:1px dashed var(--line); padding-top:12px; }
+  .mcard .row label{ width:120px; }
+  .mcard .note{ padding-left:130px; }
+  .badge-dl{ font-size:11px; color:var(--sub); }
+  .recs{ display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:10px; margin-top:10px; }
+  .recs .it{ font-size:12.5px; }
+  .recs .it b{ font-weight:600; }
+  .recs .it span{ display:block; color:var(--sub); font-size:11.5px; }
+  footer.disclaim{ margin-top:28px; padding-top:16px; border-top:1px solid var(--line); color:#9a9aa0; font-size:11.5px; line-height:1.7; }
+  /* 进度条 */
+  .bar{ height:5px; background:#ececf0; border-radius:99px; overflow:hidden; margin-top:6px; }
+  .bar i{ display:block; height:100%; background:var(--accent); width:0%; transition:width .5s; }
+  @media (max-width:780px){
+    .app{ flex-direction:column; }
+    nav{ width:100%; height:auto; position:static; display:flex; flex-wrap:wrap; gap:4px; padding:12px; }
+    .brand{ width:100%; padding:0 6px 8px; }
+    .nav-item{ width:auto; }
+    .nav-foot{ margin-top:0; }
+    main{ padding:22px 16px 60px; }
+    .note{ padding-left:0; }
+    .mcard .note{ padding-left:0; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <nav>
+    <div class="brand">sd_draw<small>本地 SD 生图 · 管理台</small></div>
+    <button class="nav-item on" data-page="overview">概览</button>
+    <button class="nav-item" data-page="config">配置</button>
+    <button class="nav-item" data-page="models">模型库</button>
+    <button class="nav-item" data-page="engine">引擎</button>
+    <button class="nav-item" data-page="styles">风格表</button>
+    <button class="nav-item" data-page="safety">安全</button>
+    <button class="nav-item" data-page="presets">润色预设</button>
+    <button class="nav-item" data-page="logs">日志</button>
+    <div class="nav-foot"><a href="#" onclick="logout();return false">退出</a><a href="#" onclick="refreshAll();return false">刷新</a></div>
+  </nav>
+
+  <main>
+    <!-- ================= 概览 ================= -->
+    <section class="page on" id="pg-overview">
+      <h1>概览</h1>
+      <p class="lead">服务健康、关键设置与数据保险。所有改动即改即生效（管理端口除外）。</p>
+      <div class="blk">
+        <h2>运行状态</h2>
+        <p id="status" class="muted">加载中…</p>
+        <div class="row" style="margin-top:8px"><span id="health" class="muted">引擎存活探测中…</span></div>
+        <p class="note">红绿灯：绿=在线，灰=失联/未配密钥。每 15 秒自动刷新。</p>
+      </div>
+      <div class="blk">
+        <h2>关键信息</h2>
+        <div id="keyinfo" class="muted">加载中…</div>
+      </div>
+      <div class="blk">
+        <h2>配置备份 / 恢复</h2>
+        <p>一键打包：配置 + 风格表 + 禁词 + 润色提示词 + 模型预设。恢复前先存好备份。</p>
+        <div class="row">
+          <button class="primary" onclick="backupConfig()">下载配置备份</button>
+          <button class="danger" onclick="restoreConfig()">从 JSON 恢复</button>
+          <span id="bkMsg" class="msg"></span>
+        </div>
+        <textarea id="restore_box" rows="4" placeholder="把备份的 bundle JSON 粘贴到这里，再点恢复"></textarea>
+      </div>
+      <div class="blk">
+        <h2>推荐模型栏</h2>
+        <p>群里做图选模型的小抄（模型库"抓取清单"也能用这些名字搜）。</p>
+        <div class="recs" id="recs"></div>
+      </div>
+      <footer class="disclaim">
+        本页面与插件产出的所有图像均由 AI 模型生成，内容仅供测试与学习；使用涉及 NSFW 的模型与描述时，请确保符合所在群聊规则与当地法律法规。模型版权归各发布者所有。本工具不参与任何模型分发盈利。
+      </footer>
+    </section>
+
+    <!-- ================= 配置 ================= -->
+    <section class="page" id="pg-config">
+      <h1>配置</h1>
+      <p class="lead">后端选谁显谁，保存即生效。AstrBot 面板同样可改，重启后覆盖。</p>
+      <div class="blk">
+        <h2>后端</h2>
+        <div class="row">
+          <label>主后端</label>
+          <select id="backend_primary" onchange="showBackendFields()">
+            <option value="webui">WebUI（本地 A1111 / Forge）</option>
+            <option value="comfyui">ComfyUI（本地）</option>
+            <option value="openai">OpenAI 兼容 API（云端）</option>
+          </select>
+        </div>
+        <div id="backend-webui" class="backend-block">
+          <div class="row"><label>WebUI 地址</label><input id="webui_url" placeholder="http://127.0.0.1:7860"></div>
+          <p class="note">需带 --api 启动；填完看概览页红绿灯判断通不通。</p>
+        </div>
+        <div id="backend-comfyui" class="backend-block">
+          <div class="row"><label>ComfyUI 地址</label><input id="comfyui_url" placeholder="http://127.0.0.1:8188"></div>
+          <p class="note">ComfyUI 默认开 API，无需额外参数。</p>
+        </div>
+        <div id="backend-openai" class="backend-block">
+          <div class="row"><label>API 密钥</label><input id="openai_api_key" type="password" placeholder="sk-..."></div>
+          <div class="row"><label>API 地址</label><input id="openai_base_url" placeholder="https://api.openai.com/v1"></div>
+          <div class="row"><label>生图模型</label><input id="openai_model" placeholder="gpt-image-1"></div>
+          <p class="note" id="openai_hint">云端按量计费；出图尺寸自动就近映射到 1024×1024 / 1792×1024 / 1024×1792。</p>
+        </div>
+      </div>
+      <div class="blk">
+        <h2>出图默认参数</h2>
+        <p>模型库"模型参数预设"可按模型单独覆盖，风格表参数再覆盖其上。</p>
+        <div class="row"><label>默认模型</label><input id="default_model" placeholder="留空用后端当前模型"></div>
+        <p class="note">本地引擎填 checkpoint 文件名（如 animagine-xl-3.1.safetensors）；openai 后端忽略此项。</p>
+        <div class="row">
+          <label>出图尺寸</label><input id="width" class="num" type="number"><span class="muted">×</span><input id="height" class="num" type="number">
+        </div>
+        <div class="row">
+          <label>步数 / CFG</label><input id="steps" class="num" type="number"><span class="muted">/</span><input id="cfg_scale" class="num" type="number" step="0.5">
+        </div>
+        <div class="row"><label>采样器</label><input id="sampler" placeholder="DPM++ 2M Karras"></div>
+        <p class="note">步数越高越慢；CFG 越高越"听话"，6 左右是动画模型甜点。</p>
+        <div class="row"><label>负面提示词</label><input id="negative_prompt"></div>
+        <div class="row">
+          <label>每日配额</label><input id="quota_per_user_per_day" class="num" type="number"><span class="muted">每人 /</span><input id="quota_total_per_day" class="num" type="number"><span class="muted">全局</span>
+        </div>
+        <div class="row"><label>描述字数上限</label><input id="desc_max_len" class="num" type="number" value="500"><span class="muted">字，超出直接拒绝出图</span></div>
+        <div class="row">
+          <label>确认超时(秒)</label><input id="confirm_timeout" class="num" type="number"><span class="muted">/ 取消超时</span><input id="cancel_timeout" class="num" type="number">
+        </div>
+        <div class="row"><label>润色模型</label><input id="pollish_model" placeholder="留空用当前默认模型"></div>
+        <p class="note">润色/翻译/微调走 LLM，填 openai 兼容后端能识别的模型名。</p>
+        <div class="row"><label>管理端口</label><input id="admin_port" class="num" type="number"><span class="muted">重启后生效，默认 7865</span></div>
+        <div class="row"><button class="primary" onclick="saveConfig()">保存配置</button><span id="cfgMsg" class="msg"></span></div>
+      </div>
+      <div class="blk">
+        <h2>管理密码</h2>
+        <p>改成只有你知道的。至少 6 位。</p>
+        <div class="row"><input id="new_token" type="password" placeholder="新密码"></div>
+        <div class="row"><button class="primary" onclick="changeToken()">改密码</button><span id="tokMsg" class="msg"></span></div>
+      </div>
+    </section>
+
+    <!-- ================= 模型库 ================= -->
+    <section class="page" id="pg-models">
+      <h1>模型库</h1>
+      <p class="lead">每个模型独立的参数预设 → 选源抓清单 → 下载进目录 → 部署进引擎。全程记账。</p>
+
+      <div class="blk">
+        <h2>模型参数预设</h2>
+        <p>为常用模型存一套参数（宽高/步数/CFG/高清修复/提示词风格）；出图时该模型自动套用，风格表可再覆盖。</p>
+        <div id="mpList"></div>
+        <div class="row"><button class="primary" onclick="addMp()">+ 新增预设</button><button onclick="saveMp()">保存预设表</button><span id="mpMsg" class="msg"></span></div>
+      </div>
+
+      <div class="blk">
+        <h2>抓取清单</h2>
+        <p>选源 → 点预选或输入名字 → 抓取该组织/关键词的可下模型（gated 灰显"需令牌"）。</p>
+        <div class="chips" id="orgChips"></div>
+        <p class="note">预选名字随手点；也可以手动输入任意组织名或关键词。更多选择看本页底部推荐栏。</p>
+        <div class="row"><input id="search_q" placeholder="组织名或关键词，如 animagine"><button class="primary" onclick="searchModels()">抓取</button><span id="srMsg" class="msg"></span></div>
+        <div id="searchResult" style="max-height:280px;overflow:auto"></div>
+      </div>
+
+      <div class="blk">
+        <h2>下载</h2>
+        <p>源已合并：选官方/镜像/自定义，选项下方直接显示对应直链模板。</p>
+        <div class="row">
+          <label>下载源</label>
+          <label style="width:auto;display:flex;align-items:center;gap:4px"><input type="radio" name="dlsrc" value="official" style="width:auto;flex:none;min-width:0" onchange="showDlSrc()"> 官方</label>
+          <label style="width:auto;display:flex;align-items:center;gap:4px"><input type="radio" name="dlsrc" value="hf-mirror" style="width:auto;flex:none;min-width:0" onchange="showDlSrc()"> 镜像</label>
+          <label style="width:auto;display:flex;align-items:center;gap:4px"><input type="radio" name="dlsrc" value="custom" style="width:auto;flex:none;min-width:0" onchange="showDlSrc()"> 自定义</label>
+        </div>
+        <div class="row"><label>直链模板</label><input id="dl_url_preview" readonly style="background:#f5f5f7" value=""></div>
+        <div class="row" id="customRow" style="display:none"><label>自定义模板</label><input id="custom_download_url" placeholder="https://.../{file}（{file} 会被替换成文件名）"></div>
+        <div class="row"><label>令牌 token</label><input id="hf_token" type="password" placeholder="hf_...（解锁 gated/成人向仓库，抓取与下载自动带上）"></div>
+        <p class="note">同源 502/限流就换镜像源；带 token 后 gated 仓库也能下。custom 源填自定义模板。</p>
+        <div class="row"><label>清单模型</label><div class="row" id="catalog" style="flex:1;min-width:200px"></div></div>
+        <div class="row"><label>自定义直链</label><input id="custom_url" placeholder="https://.../model.safetensors（跳过清单直接下）"></div>
+        <div class="row"><button class="primary" onclick="startDownload()">开始下载</button><span id="dlMsg" class="msg"></span></div>
+        <div id="tasks" style="margin-top:14px"></div>
+      </div>
+
+      <div class="blk">
+        <h2>下载记账</h2>
+        <p>状态 / 大小 / 时间 / 部署角标，最近 100 条。</p>
+        <table><thead><tr><th>文件</th><th>大小</th><th>时间</th><th>状态</th><th></th></tr></thead><tbody id="dlbook"></tbody></table>
+      </div>
+
+      <div class="blk">
+        <h2>一键部署</h2>
+        <p>把已下载的模型拷进引擎模型目录（自动识别 WebUI / ComfyUI 的 models 子目录）。</p>
+        <div class="row"><label>已下载文件</label><select id="deploy_file"></select><button class="primary" onclick="deployModel()">部署到引擎</button><span id="dpMsg" class="msg"></span></div>
+      </div>
+    </section>
+
+    <!-- ================= 引擎 ================= -->
+    <section class="page" id="pg-engine">
+      <h1>引擎</h1>
+      <p class="lead">手动填引擎目录 → 一键安装/启动/停止。路径保存在配置里。</p>
+      <div class="blk">
+        <h2>引擎目录</h2>
+        <div class="row"><label>引擎安装目录</label><input id="engine_dir" placeholder="留空=插件 data/engines"><button onclick="pickDisk('engine_dir')">选盘符</button><button onclick="openEngineDir()">打开目录</button></div>
+        <p class="note">一键部署会把模型拷进它的 models 子目录；一键启动从这里找可执行入口。</p>
+        <div class="row"><button class="primary" onclick="saveEngineDir()">保存路径</button><span id="edMsg" class="msg"></span></div>
+      </div>
+      <div class="blk">
+        <h2>安装</h2>
+        <p>本地引擎二选一：ComfyUI 可后台一键装官方便携包；WebUI 走 git 流程或整合包。</p>
+        <div class="row"><button class="primary" onclick="installEngine()">一键安装 ComfyUI</button><span id="engMsg" class="msg"></span></div>
+        <div id="engineProgress" class="muted" style="margin-top:10px"></div>
+        <p class="note">ComfyUI 官方便携包：<a href="https://github.com/comfyanonymous/ComfyUI" target="_blank">github.com/comfyanonymous/ComfyUI</a>（Releases 页有 win 版压缩包）</p>
+        <p class="note">WebUI（Forge）：git clone <a href="https://github.com/lllyasviel/stable-diffusion-webui-forge" target="_blank">stable-diffusion-webui-forge</a> ，进目录跑 webui.bat 完成安装。</p>
+      </div>
+      <div class="blk">
+        <h2>启动 / 停止</h2>
+        <div class="row">
+          <button class="primary" onclick="launchEngine('webui')">一键启动 WebUI(Forge)</button>
+          <button onclick="launchEngine('comfyui')">启动 ComfyUI</button>
+          <button class="danger" onclick="stopEngine()">停止引擎</button>
+          <span id="launchMsg" class="msg"></span>
+        </div>
+        <div id="procInfo" class="muted" style="margin-top:6px"></div>
+        <p class="note">启动后会弹出引擎自己的命令行窗口，带 --api；就绪后概览页红绿灯变绿。停止=终止进程树。</p>
+      </div>
+    </section>
+
+    <!-- ================= 风格表 ================= -->
+    <section class="page" id="pg-styles">
+      <h1>风格表</h1>
+      <p class="lead">风格 = 模型 + 提示词 + 参数组合。群里四选一菜单展示「风格表 + 默认」。</p>
+      <div class="blk">
+        <div id="styles"></div>
+        <div class="row" style="margin-top:14px"><button class="primary" onclick="addStyle()">+ 新增风格</button><button onclick="saveStyles()">保存风格表</button><span id="stMsg" class="msg"></span></div>
+      </div>
+    </section>
+
+    <!-- ================= 安全 ================= -->
+    <section class="page" id="pg-safety">
+      <h1>安全</h1>
+      <p class="lead">NSFW 许可总闸 + 白名单 + 禁词表，一处管齐。</p>
+      <div class="blk">
+        <h2>NSFW 许可</h2>
+        <div class="row"><label>NSFW 许可总闸</label><input id="nsfw_on" type="checkbox" style="width:auto;flex:none;min-width:0;width:17px;height:17px"><span class="muted">勾选=群里允许（默认不勾）</span></div>
+        <div class="row"><label>NSFW 白名单群</label><input id="nsfw_whitelist" placeholder="群号，逗号分隔"></div>
+        <p class="note">只作用于群聊：总闸开=全群放行；闸关=只有白名单群放行；私聊不受此闸约束。</p>
+      </div>
+      <div class="blk">
+        <h2>禁词表</h2>
+        <p>原始描述与润色结果双重过筛，撞词打回重写。NSFW 闸关着时此表管用。</p>
+        <textarea id="badwords" rows="8" placeholder="每行一个词"></textarea>
+        <div class="row" style="margin-top:10px"><button class="primary" onclick="saveBadwords()">保存禁词</button><span id="bwMsg" class="msg"></span></div>
+      </div>
+    </section>
+
+    <!-- ================= 润色预设 ================= -->
+    <section class="page" id="pg-presets">
+      <h1>润色预设</h1>
+      <p class="lead">每套预设 = 润色四件套 + 三档风格指令，出图用「使用中」的那套。展开卡片可改，改完保存整套；模型参数预设的"提示词风格"会在此之上附加。</p>
+      <div class="blk">
+        <div class="row">
+          <button class="primary" onclick="savePresets()">保存整套</button>
+          <button class="small" onclick="addPset()">＋ 新增预设</button>
+          <span id="psMsg" class="msg"></span>
+        </div>
+        <div id="psList" style="margin-top:12px"></div>
+        <p class="note" style="padding-left:0;margin:8px 0 0">身份注入块（PERSONA_LOAD 段）是钝化审核的骨架，删了可能退回敏感审卡。至少保留一套预设。</p>
+      </div>
+    </section>
+
+    <!-- ================= 日志 ================= -->
+    <section class="page" id="pg-logs">
+      <h1>日志</h1>
+      <p class="lead">最近的出图/下载/报错痕迹，只读。</p>
+      <div class="blk">
+        <div class="row"><button class="primary" onclick="loadLogs()">刷新日志</button><span id="lgMsg" class="msg"></span></div>
+        <pre id="logbox">加载中…</pre>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="diskOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.28);z-index:50;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:14px;padding:20px 24px;width:min(420px,90vw)">
+    <h3 style="font-size:15px;margin-bottom:12px">选择盘符（选完自动回填路径）</h3>
+    <div id="diskList"></div>
+    <div style="margin-top:12px;text-align:right"><button onclick="closeDisk()">取消</button></div>
+  </div>
+</div>
+
+<script>
+/* ============ 基础 ============ */
+const API = "";
+const NL = String.fromCharCode(10);
+function tok(){ return encodeURIComponent(decodeURIComponent(document.cookie.split("sd_token=")[1]?.split(";")[0] || "")); }
+async function api(path, method = "GET", body) {
+  const opt = { method, headers: { "X-Sd-Token": tok() } };
+  if (body !== undefined) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(body); }
+  const r = await fetch(API + path, opt);
+  return r.json();
+}
+function msg(el, text, ok) { el.textContent = text; el.className = "msg " + (ok ? "ok" : "err"); }
+function esc(s){ return String(s ?? "").replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c])); }
+function fmtSize(b){ if(!b) return "—"; if(b>1073741824) return (b/1073741824).toFixed(1)+" GB"; if(b>1048576) return (b/1048576).toFixed(1)+" MB"; if(b>1024) return (b/1024).toFixed(0)+" KB"; return b+" B"; }
+
+/* ============ 导航 ============ */
+document.querySelectorAll(".nav-item").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll(".nav-item").forEach(x => x.classList.remove("on"));
+  document.querySelectorAll(".page").forEach(x => x.classList.remove("on"));
+  b.classList.add("on");
+  document.getElementById("pg-" + b.dataset.page).classList.add("on");
+}));
+function logout(){ document.cookie = "sd_token=;path=/;max-age=0"; location.reload(); }
+
+/* ============ 状态区 ============ */
+let Cfg = null, Status = null, Styles = [], Badwords = [], Presets = {}, Mp = [], Downloaded = [], Catalog = [];
+const RECS = [
+  ["DreamShaper 8", "泛用全能 · 真人与插画通吃（Lykon/DreamShaper）"],
+  ["NoobAI-XL", "二次元专精 · 动漫人物二创（Linaqruf/noobai）"],
+  ["animagine-xl-3.1", "安全向动画 · 画风干净（cagliostrolab/AnimagineXL3.1）"],
+  ["abyssorangexl2", "成人向天花板 · 需 token（WarriorMama777/abyssorangexl2）"],
+  ["Pony V6 XL", "刻耳柏洛斯体系 · 得分前缀（AstraliteHeart/pony-diffusion-v6）"],
+  ["SDXL 基座", "通用底模 · 一切的地基（stabilityai/stable-diffusion-xl-base-1.0）"],
+  ["ChilloutMix", "韩系写实 · 人物皮肤质感（kualala/ChilloutMix）"],
+  ["GuoFeng3", "国风水墨 · 古风人物（xiaolxl/GuoFeng3.5）"],
+  ["openjourney", "Midjourney 风 · 提示词可读性强（prompthero/openjourney）"],
+  ["CyberRealistic", "欧美写实 · 高保真人像（Yntec/CyberRealistic）"],
+];
+function renderRecs(){ document.getElementById("recs").innerHTML = RECS.map(r => '<div class="it"><b>'+esc(r[0])+'</b><span>'+esc(r[1])+'</span></div>').join(""); }
+
+async function loadStatus(){
+  const s = await api("/api/status");
+  if (s && s.ok !== false) {
+    document.getElementById("status").innerHTML =
+      '主后端：<b>' + esc(s.backend_primary || Cfg?.backend_primary || "-") + '</b> · 默认模型：<b>' + esc(s.default_model || Cfg?.default_model || "-") +
+      '</b> · WebUI：<b>' + esc(s.webui_url || "-") + '</b>';
+    const ki = document.getElementById("keyinfo");
+    if (Cfg) ki.innerHTML = [
+      '下载目录：<b>'+esc(s.download_dir || Cfg.download_dir || "插件 data/downloads")+'</b>',
+      '引擎目录：<b>'+esc(s.engine_dir || Cfg.engine_dir || "插件 data/engines")+'</b>',
+      '下载源：<b>'+esc(Cfg.download_source||"hf-mirror")+'</b>' + (Cfg.hf_token ? ' · token：<b>已配置</b>' : ''),
+      'NSFW 闸：<b>'+(Cfg.nsfw_on?'开':'关')+'</b>'+(Cfg.nsfw_whitelist?.length?'（白名单 '+Cfg.nsfw_whitelist.join("、")+'）':''),
+      '管理端口：<b>'+esc(String(Cfg.admin_port||"-"))+'</b>',
+    ].map(x => '<div style="margin-bottom:4px">' + x + '</div>').join("");
+  }
+}
+async function loadHealth(){
+  const h = await api("/api/health");
+  const el = document.getElementById("health");
+  if (!h || h.ok === false) { el.innerHTML = '<span class="muted">引擎存活探测不可用</span>'; return; }
+  const bits = [];
+  const engs = (h.engines||[]).length
+    ? h.engines
+    : [["webui",h.webui],["comfyui",h.comfyui],["openai",h.openai]].map(([n,on])=>({name:n,online:on}));
+  engs.forEach(e => {
+    const ok = !!e.online;
+    bits.push('<span class="dot" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:'+(ok?"var(--ok)":"#d8d8dc")+';margin-right:5px"></span><b>'+esc(e.name)+'</b>'+(ok?' 在线':' 失联'));
+  });
+  el.innerHTML = bits.join("&nbsp;&nbsp;") || '<span class="muted">无引擎配置</span>';
+}
+
+/* ============ 配置 ============ */
+function syncInputs(c){
+  ["backend_primary","webui_url","comfyui_url","openai_api_key","openai_base_url","openai_model",
+   "default_model","width","height","steps","cfg_scale","sampler","negative_prompt",
+   "quota_per_user_per_day","quota_total_per_day","desc_max_len","confirm_timeout","cancel_timeout","pollish_model","admin_port"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && c[id] !== undefined) el.value = c[id];
+  });
+  document.getElementById("nsfw_on").checked = !!c.nsfw_on;
+  document.getElementById("nsfw_whitelist").value = (c.nsfw_whitelist||[]).join(",");
+  document.getElementById("engine_dir").value = c.engine_dir || "";
+  document.getElementById("custom_download_url").value = c.custom_download_url || "";
+  document.getElementById("hf_token").value = c.hf_token || "";
+  const srcV = c.download_source || "hf-mirror";
+  (document.querySelectorAll("input[name=dlsrc]")).forEach(r => { r.checked = r.value === srcV; });
+  showDlSrc();
+  showBackendFields();
+}
+function showBackendFields(){
+  const v = document.getElementById("backend_primary").value;
+  ["webui","comfyui","openai"].forEach(k => {
+    const el = document.getElementById("backend-" + k);
+    el.style.display = (v === k) ? "block" : "none";
+  });
+  // OpenAI 未填 key → 灰化
+  const ob = document.getElementById("backend-openai");
+  const key = (document.getElementById("openai_api_key").value || "").trim();
+  ob.classList.toggle("dim", v === "openai" && !key);
+  document.getElementById("openai_hint").textContent = key
+    ? "云端按量计费；出图尺寸自动就近映射到 1024×1024 / 1792×1024 / 1024×1792。"
+    : "未填写 API 密钥，此区块暂不可用——填上 key 即解锁。";
+}
+async function saveConfig(){
+  const patch = {};
+  ["backend_primary","webui_url","comfyui_url","openai_api_key","openai_base_url","openai_model",
+   "default_model","width","height","steps","cfg_scale","sampler","negative_prompt",
+   "quota_per_user_per_day","quota_total_per_day","desc_max_len","confirm_timeout","cancel_timeout","pollish_model","admin_port",
+   "engine_dir"].forEach(id => patch[id] = document.getElementById(id).value);
+  patch.quota_per_user_per_day = parseInt(patch.quota_per_user_per_day||0);
+  patch.quota_total_per_day = parseInt(patch.quota_total_per_day||0);
+  patch.desc_max_len = parseInt(patch.desc_max_len||500);
+  patch.confirm_timeout = parseInt(patch.confirm_timeout||0);
+  patch.cancel_timeout = parseInt(patch.cancel_timeout||0);
+  patch.width = parseInt(patch.width||0); patch.height = parseInt(patch.height||0);
+  patch.steps = parseInt(patch.steps||0); patch.cfg_scale = parseFloat(patch.cfg_scale||0);
+  patch.admin_port = parseInt(patch.admin_port||0);
+  const r = await api("/api/config", "PUT", patch);
+  msg(document.getElementById("cfgMsg"), r.ok ? "已保存" : (r.error||"保存失败"), r.ok);
+}
+async function changeToken(){
+  const r = await api("/api/token", "PUT", { token: document.getElementById("new_token").value });
+  msg(document.getElementById("tokMsg"), r.ok ? "密码已更新" : (r.error||"失败"), r.ok);
+}
+async function saveEngineDir(){
+  const r = await api("/api/config", "PUT", { engine_dir: document.getElementById("engine_dir").value });
+  msg(document.getElementById("edMsg"), r.ok ? "已保存" : (r.error||"失败"), r.ok);
+}
+
+/* ============ 风格表 ============ */
+let styleRows = [];
+function renderStyles(){
+  const box = document.getElementById("styles");
+  if (!styleRows.length){ box.innerHTML = '<p class="muted">还没有风格，点下方"+ 新增风格"开始。</p>'; return; }
+  box.innerHTML = styleRows.map((s,i)=>`
+    <div style="border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px">
+      <div class="row">
+        <input style="flex:0 0 130px;width:130px;min-width:0" placeholder="风格名" value="${esc(s.name)}" oninput="styleRows[${i}].name=this.value">
+        <select style="flex:2.2" onchange="styleRows[${i}].model=this.value"><option value="">默认模型</option>${modelOptions(s.model)}</select>
+        <button class="small danger" onclick="delStyle(${i})">删除</button>
+      </div>
+      <div class="row"><label style="width:90px">正向词</label><input value="${esc(s.positive||"")}" oninput="styleRows[${i}].positive=this.value"></div>
+      <div class="row"><label style="width:90px">负向词</label><input value="${esc(s.negative||"")}" oninput="styleRows[${i}].negative=this.value"></div>
+      <details style="margin-top:2px"><summary class="muted" style="cursor:pointer">参数覆盖（可留空=继承预设/全局）</summary>
+        <div class="row" style="margin-top:8px">
+          <label style="width:90px">宽/高</label><input class="num" value="${esc(s.params?.width||"")}" oninput="styleRows[${i}].params.width=parseInt(this.value||0)||''">
+          <span class="muted">×</span><input class="num" value="${esc(s.params?.height||"")}" oninput="styleRows[${i}].params.height=parseInt(this.value||0)||''">
+        </div>
+        <div class="row">
+          <label style="width:90px">步数/CFG</label><input class="num" value="${esc(s.params?.steps||"")}" oninput="styleRows[${i}].params.steps=parseInt(this.value||0)||''">
+          <span class="muted">/</span><input class="num" value="${esc(s.params?.cfg_scale||"")}" oninput="styleRows[${i}].params.cfg_scale=parseFloat(this.value||0)||''">
+        </div>
+        <div class="row"><label style="width:90px">采样器</label><input value="${esc(s.params?.sampler||"")}" oninput="styleRows[${i}].params.sampler=this.value"></div>
+      </details>
+    </div>`).join("");
+}
+function modelOptions(sel){
+  let opts = "";
+  [DefaultModel(), ...Downloaded.map(x=>x.name), ...Mp.map(p=>p.model)].forEach((m,i)=>{
+    if (!m) return;
+    opts += '<option value="'+esc(m)+'"'+(m===sel?' selected':'')+'>'+esc(m)+(i===0?'（当前默认）':'')+'</option>';
+  });
+  return opts;
+}
+function addStyle(){
+  styleRows.push({ name:"风格"+(styleRows.length+1)+"号", model:"", positive:"", negative:"", params:{} });
+  renderStyles();
+}
+function delStyle(i){ styleRows.splice(i,1); renderStyles(); }
+async function saveStyles(){
+  const list = styleRows.filter(s=>s.name.trim()).map(s=>({ name:s.name.trim(), model:s.model||"", positive:s.positive||"", negative:s.negative||"", params:Object.fromEntries(Object.entries(s.params||{}).filter(([k,v])=>v)) }));
+  const r = await api("/api/styles", "PUT", { styles: list });
+  msg(document.getElementById("stMsg"), r.ok ? "已保存 "+list.length+" 条" : (r.error||"失败"), r.ok);
+}
+
+/* ============ 安全 ============ */
+async function saveBadwords(){
+  const words = document.getElementById("badwords").value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  const r = await api("/api/badwords", "PUT", { words });
+  msg(document.getElementById("bwMsg"), r.ok ? "已保存 "+words.length+" 词" : (r.error||"失败"), r.ok);
+}
+
+/* ============ 润色预设（预设组折叠卡） ============ */
+let Psets = [], psActive = "";
+function psField(i, key, label){
+  const p = Psets[i];
+  const val = p[key] || "";
+  const setter = "Psets[" + i + "]." + key + "=this.value";
+  return '<div class="row"><label style="width:100%;font-weight:600">' + label + '</label>' +
+         '<textarea rows="4" oninput=\'' + setter + '\'>' + esc(val) + '</textarea></div>';
+}
+function psStylesEditor(i){
+  const st = Psets[i].styles || [];
+  if (!st.length) return '<p class="muted">这套预设还没有风格指令，加一条吧。</p><button class="small" onclick="addStyle(' + i + ')">＋ 添加指令</button>';
+  return st.map((s, j) =>
+    '<div class="row" style="align-items:flex-start">' +
+    '<input class="sname" placeholder="指令名" value="' + esc(s.name || "") + '" onchange=\'Psets[' + i + '].styles[' + j + '].name=this.value\' style="width:150px">' +
+    '<textarea rows="3" placeholder="指令内容" oninput=\'Psets[' + i + '].styles[' + j + '].text=this.value\'>' + esc(s.text || "") + '</textarea>' +
+    '<button class="small danger" onclick="delStyle(' + i + ',' + j + ')">删</button>' +
+    '</div>'
+  ).join("") + '<button class="small" onclick="addStyle(' + i + ')">＋ 添加指令</button>';
+}
+function addStyle(i){ (Psets[i].styles = Psets[i].styles || []).push({ name: "新指令", text: "" }); renderPresets(); }
+function delStyle(i, j){ Psets[i].styles.splice(j, 1); renderPresets(); }
+function psSnippet(p){
+  const n = (a,l) => { const s=(a||"").replace(/\s+/g," ").trim(); return s ? s.slice(0,l)+"…" : "（空）"; };
+  return "润色 " + n(p.pollish_system,12) + " · 翻译 " + n(p.translate_system,12);
+}
+function renderPresets(){
+  const box = document.getElementById("psList");
+  if (!Psets.length) { box.innerHTML = '<p class="muted">还没有预设，点「＋ 新增预设」开建。</p>'; return; }
+  box.innerHTML = Psets.map((p, i) => {
+    const on = p.name === psActive || (!psActive && i === 0);
+    if (on) psActive = p.name;
+    return '<details class="mcard"' + (on ? " open" : "") + '>' +
+      '<summary><span class="arrow">▶</span>' +
+      '<input class="pname" value="' + esc(p.name) + '" onchange="Psets[' + i + '].name=this.value" style="width:180px;font-size:13px" title="预设名"> ' +
+      '<span class="sub">' + psSnippet(p) + '</span>' +
+      (on ? '<span class="tag">使用中</span>' :
+        '<input type="radio" name="pspick" onchange="psActive=Psets[' + i + '].name;renderPresets()" style="width:auto;min-width:0;margin-left:6px"> 用这套') +
+      '<button class="small danger" style="margin-left:auto" onclick="delPset(' + i + ')">删除</button>' +
+      '</summary><div class="body">' +
+      psField(i, "pollish_system", "润色系统提示词") +
+      psField(i, "style_system", "风格润色提示词") +
+      psField(i, "translate_system", "翻译提示词") +
+      psField(i, "tweak_system", "微调提示词") +
+      '<div style="border-top:1px dashed var(--line);margin:10px 0 6px;padding-top:8px;font-size:12px;color:var(--sub)">风格指令（模型参数预设里选这套后，再选其中一条，随翻译链路生效）</div>' +
+      psStylesEditor(i) +
+      '</div></details>';
+  }).join("");
+}
+function addPset(){
+  const src = Psets.find(p => p.name === psActive) || Psets[0];
+  const cp = JSON.parse(JSON.stringify(src || {}));
+  cp.name = (src ? src.name : "预设") + " 副本";
+  Psets.push(cp);
+  psActive = cp.name;
+  renderPresets();
+  msg(document.getElementById("psMsg"), "已新增副本，别忘了保存", true);
+}
+function delPset(i){
+  if (Psets.length <= 1) { msg(document.getElementById("psMsg"), "至少保留一套预设", false); return; }
+  const name = Psets[i].name;
+  Psets.splice(i, 1);
+  if (psActive === name) psActive = Psets[0].name;
+  renderPresets();
+  msg(document.getElementById("psMsg"), "已删除「" + name + "」，别忘了保存", true);
+}
+async function savePresets(){
+  if (!Psets.length) { msg(document.getElementById("psMsg"), "没有可保存的预设", false); return; }
+  const r = await api("/api/presets", "PUT", { active: psActive || Psets[0].name, presets: Psets });
+  msg(document.getElementById("psMsg"), r.ok ? "整套已保存" : (r.error || "失败"), r.ok);
+}
+
+/* ============ 模型参数预设（折叠页） ============ */
+function addMp(){
+  Mp.push({ name:"", model:"", width:0, height:0, steps:0, cfg_scale:0, sampler:"", negative_prompt:"", hires:true, hires_upscaler:"", hires_scale:0, hires_denoise:0, prompt_preset:"", prompt_style:"", note:"" });
+  renderMp();
+}
+function delMp(i){ Mp.splice(i,1); renderMp(); }
+function renderMp(){
+  const box = document.getElementById("mpList");
+  if (!Mp.length){ box.innerHTML = '<p class="muted">还没有预设，点"+ 新增预设"给常用模型存一套参数。</p>'; return; }
+  box.innerHTML = Mp.map((p,i)=>`
+    <details class="mcard">
+      <summary>
+        <span class="arrow">▶</span>
+        <span style="min-width:120px">${p.name ? esc(p.name) : '<span class="muted">未命名</span>'}</span>
+        <span class="sub">${esc(p.model||"未绑定模型")}</span>
+      </summary>
+      <div class="body">
+        <div class="row"><label>预设名</label><input value="${esc(p.name)}" placeholder="如：anime 主力" oninput="Mp[${i}].name=this.value"></div>
+        <div class="row"><label>绑定模型</label><input value="${esc(p.model)}" placeholder="checkpoint 文件名或模型名" oninput="Mp[${i}].model=this.value"></div>
+        <div class="row"><label>尺寸</label><input class="num" type="number" value="${p.width||""}" placeholder="继承" oninput="Mp[${i}].width=parseInt(this.value||0)||0"><span class="muted">×</span><input class="num" type="number" value="${p.height||""}" placeholder="继承" oninput="Mp[${i}].height=parseInt(this.value||0)||0"></div>
+        <div class="row"><label>步数 / CFG</label><input class="num" type="number" value="${p.steps||""}" placeholder="继承" oninput="Mp[${i}].steps=parseInt(this.value||0)||0"><span class="muted">/</span><input class="num" type="number" step="0.5" value="${p.cfg_scale||""}" placeholder="继承" oninput="Mp[${i}].cfg_scale=parseFloat(this.value||0)||0"></div>
+        <div class="row"><label>采样器</label><input value="${esc(p.sampler)}" placeholder="继承全局" oninput="Mp[${i}].sampler=this.value"></div>
+        <div class="row"><label>负面提示词</label><input value="${esc(p.negative_prompt)}" placeholder="继承全局" oninput="Mp[${i}].negative_prompt=this.value"></div>
+        <div class="row"><label>高清修复</label><input type="checkbox" style="width:auto;flex:none;min-width:0;width:17px;height:17px" ${p.hires?"checked":""} onchange="Mp[${i}].hires=this.checked"><span class="muted">勾选=开，不勾=关（此模型覆盖全局）</span></div>
+        <div class="row"><label>放大器</label><input value="${esc(p.hires_upscaler)}" placeholder="继承全局（如 R-ESRGAN 4x+ Anime6B）" oninput="Mp[${i}].hires_upscaler=this.value"></div>
+        <div class="row"><label>放大倍率</label><input class="num" type="number" step="0.1" value="${p.hires_scale||""}" placeholder="继承" oninput="Mp[${i}].hires_scale=parseFloat(this.value||0)||0"><span class="muted">/ 重绘强度</span><input class="num" type="number" step="0.05" value="${p.hires_denoise||""}" placeholder="继承" oninput="Mp[${i}].hires_denoise=parseFloat(this.value||0)||0"></div>
+        <div class="row"><label>润色预设</label><select onchange="Mp[${i}].prompt_preset=this.value;Mp[${i}].prompt_style='';renderMp()">${mpPresetOpts(p)}</select><span class="muted">第二步的指令取自这套预设</span></div>
+        <div class="row"><label>风格指令</label><select onchange="Mp[${i}].prompt_style=this.value">${mpStyleOpts(p)}</select></div>
+        <div class="row"><label>备注</label><input value="${esc(p.note)}" placeholder="来源/显存建议等" oninput="Mp[${i}].note=this.value"></div>
+        <div class="row"><button class="small danger" onclick="delMp(${i})">删除此预设</button></div>
+      </div>
+    </details>`).join("");
+}
+function mpPresetOpts(p){
+  let h = '<option value="" ' + (!p.prompt_preset ? "selected" : "") + '>不指定（按默认长句翻译）</option>';
+  h += Psets.map(q =>
+    '<option value="' + esc(q.name) + '" ' + (p.prompt_preset === q.name ? "selected" : "") + '>' + esc(q.name) + '</option>'
+  ).join("");
+  return h;
+}
+function mpStyleOpts(p){
+  let h = '<option value="" ' + (!p.prompt_style ? "selected" : "") + '>不指定</option>';
+  const q = Psets.find(x => x.name === p.prompt_preset);
+  const st = q && q.styles ? q.styles : [];
+  if (!st.length) return h + '<option disabled>该预设暂无指令</option>';
+  h += st.map(s =>
+    '<option value="' + esc(s.name) + '" ' + (p.prompt_style === s.name ? "selected" : "") + '>' + esc(s.name) + '</option>'
+  ).join("");
+  return h;
+}
+async function saveMp(){
+  const r = await api("/api/modelpresets", "PUT", { presets: Mp });
+  msg(document.getElementById("mpMsg"), r.ok ? "已保存 "+(r.count||0)+" 条" : (r.error||"失败"), r.ok);
+}
+
+/* ============ 抓取清单 ============ */
+const ORGS = ["animagine","cagliostrolab","Lykon","dreamlike-art","stabilityai","prompthero","noobai","abyssorangexl","CyberRealistic","openjourney"];
+function renderChips(){
+  document.getElementById("orgChips").innerHTML = ORGS.map(o => '<span class="chip" onclick="setSearch(\''+esc(o)+'\')">'+esc(o)+'</span>').join("")
+    + '<span style="align-self:center" class="muted">（更多推荐见本页底部推荐栏）</span>';
+}
+function setSearch(q){ document.getElementById("search_q").value = q; searchModels(); }
+async function searchModels(){
+  const q = document.getElementById("search_q").value.trim();
+  if (!q){ msg(document.getElementById("srMsg"), "给个组织名或关键词", false); return; }
+  msg(document.getElementById("srMsg"), "抓取中…", true);
+  const r = await api("/api/models/search", "POST", { search: q });
+  if (!r.ok){ msg(document.getElementById("srMsg"), r.error||"抓取失败", false); return; }
+  const box = document.getElementById("searchResult");
+  if (!r.models.length){ box.innerHTML = '<p class="muted">没找到模型仓库，换个关键词试试。</p>'; }
+  else {
+    box.innerHTML = '<table><thead><tr><th>模型</th><th>文件</th><th></th></tr></thead><tbody>' +
+      r.models.map(m => '<tr><td>'+esc(m.id)+(m.gated?' <span class="tag wait">需令牌</span>':'')+'</td><td>'+
+        (m.files.length ? m.files.map(f=>'<div>'+esc(f)+'</div>').join("") : '<span class="muted">无 safetensors/ckpt</span>') +
+        '</td><td>'+(m.files.length?'<button class="small" onclick="useSearch(\''+esc(m.id)+'\',\''+esc(m.files[0])+'\')">选用</button>':'')+'</td></tr>').join("") +
+      '</tbody></table>';
+  }
+  msg(document.getElementById("srMsg"), "共 "+r.models.length+" 个仓库，点「选用」把文件填进下方清单", true);
+}
+function useSearch(id, file){
+  const sel = document.getElementById("catalog");
+  sel.innerHTML = '<option value="'+esc(file)+'">'+esc(file)+'（来自 '+esc(id)+'）</option>';
+  msg(document.getElementById("dlMsg"), "已选用 "+file, true);
+  msg(document.getElementById("srMsg"), "", true);
+}
+function DefaultModel(){ return (Cfg?.default_model || "").trim(); }
+
+/* ============ 下载 ============ */
+function showDlSrc(){
+  const v = (document.querySelector('input[name="dlsrc"]:checked')||{}).value || "hf-mirror";
+  document.getElementById("customRow").style.display = v === "custom" ? "flex" : "none";
+  const urls = { official:"https://huggingface.co/{模型}/resolve/main/{文件}", "hf-mirror":"https://hf-mirror.com/{模型}/resolve/main/{文件}", custom:"自定义模板（下方填写）" };
+  document.getElementById("dl_url_preview").value = urls[v] || "";
+}
+async function startDownload(){
+  const stub = (document.getElementById("catalog").value || "").trim();
+  const raw_url = (document.getElementById("custom_url").value || "").trim();
+  if (!stub && !raw_url){ msg(document.getElementById("dlMsg"), "先在清单选个模型，或填自定义直链", false); return; }
+  const source = (document.querySelector('input[name="dlsrc"]:checked')||{}).value || "hf-mirror";
+  api("/api/config", "PUT", {
+    download_source: source,
+    custom_download_url: document.getElementById("custom_download_url").value,
+    hf_token: document.getElementById("hf_token").value,
+  });
+  const r = await api("/api/download/start", "POST", { file: stub, url: raw_url, source });
+  msg(document.getElementById("dlMsg"), r.ok ? "已提交，盯下方任务" : (r.error||"提交失败"), r.ok);
+  if (r.ok){ document.getElementById("custom_url").value = ""; refreshDl(); }
+}
+async function refreshDl(){
+  const r = await api("/api/download");
+  const tasks = r.tasks || [], recs = r.records || [];
+  const box = document.getElementById("tasks");
+  box.innerHTML = tasks.length ? tasks.map(t=>{
+    const pct = t.percent||0;
+    return '<div style="margin-bottom:10px;font-size:12.5px"><div style="display:flex;justify-content:space-between"><b>'+esc(t.dest||t.task_id)+'</b><span class="muted">'+esc(t.status)+' '+fmtSize(t.done)+(t.total?'/'+fmtSize(t.total):'')+(t.speed?' @'+fmtSize(t.speed)+'/s':'')+'</span></div>'+
+      '<div class="bar"><i style="width:'+pct+'%"></i></div>'+
+      (t.status==="running" ? '<button class="small danger" style="margin-top:4px" onclick="cancelTask(\''+t.task_id+'\')">取消</button>' : '') +
+      (t.error ? '<div style="color:var(--err);font-size:12px">'+esc(t.error)+'</div>' : '') + '</div>';
+  }).join("") : '<p class="muted">当前没有下载任务</p>';
+  const book = document.getElementById("dlbook");
+  book.innerHTML = recs.length ? recs.map(rec=>'<tr><td>'+esc(rec.file)+'</td><td>'+fmtSize(rec.size)+'</td><td>'+esc(rec.time||"")+'</td><td>'+statusTag(rec)+'</td><td>'+(rec.target?'<span class="tag deployed">已部署</span>':'')+'</td></tr>').join("") : '<tr><td colspan="5" class="muted">还没有下载记录</td></tr>';
+}
+function statusTag(rec){
+  const map = { running:['下载中',''], done:['完成',''], error:['失败',''], canceled:['已取消',''], failed:['失败',''] };
+  const t = map[rec.status] || ['—',''];
+  return '<span class="tag'+(rec.status==="done"?" deployed":"")+'">'+t[0]+'</span>'+(rec.speed?' <span class="badge-dl">'+fmtSize(rec.speed)+'/s</span>':'');
+}
+async function cancelTask(id){ await api("/api/download/cancel", "POST", { task_id: id }); refreshDl(); }
+
+/* ============ 部署 ============ */
+async function refreshDeployList(){
+  const r = await api("/api/models");
+  Downloaded = r.models || [];
+  Catalog = r.catalog || [];
+  const sel = document.getElementById("deploy_file");
+  sel.innerHTML = '<option value="">选择已下载文件…</option>' + Downloaded.map(x=>'<option value="'+esc(x.name)+'">'+esc(x.name)+'（'+fmtSize(x.size)+'）</option>').join("");
+  renderStyles();
+}
+async function deployModel(){
+  const f = document.getElementById("deploy_file").value;
+  if (!f){ msg(document.getElementById("dpMsg"), "先选一个已下载的文件", false); return; }
+  const r = await api("/api/engine/deploy", "POST", { file: f });
+  msg(document.getElementById("dpMsg"), r.ok ? f+" 已部署进引擎" : (r.error||"部署失败"), r.ok);
+  if (r.ok) refreshDl();
+}
+
+/* ============ 引擎 ============ */
+async function installEngine(){
+  msg(document.getElementById("engMsg"), "开始安装…", true);
+  const r = await api("/api/engine/install", "POST", {});
+  msg(document.getElementById("engMsg"), r.ok ? "安装任务已启动" : (r.error||"启动失败"), r.ok);
+  pollInstall();
+}
+async function pollInstall(){
+  try {
+    const r = await api("/api/engine/status");
+    const st = r.install || {};
+    document.getElementById("engineProgress").textContent = st.message || "";
+    if (st.running) setTimeout(pollInstall, 1200);
+  } catch(e){}
+}
+async function launchEngine(kind){
+  msg(document.getElementById("launchMsg"), "启动 "+kind+"…", true);
+  const r = await api("/api/engine/launch", "POST", { kind });
+  msg(document.getElementById("launchMsg"), r.ok ? "已发起启动" : (r.error||"启动失败"), r.ok);
+  refreshProc();
+}
+async function stopEngine(){
+  const r = await api("/api/engine/stop", "POST", {});
+  msg(document.getElementById("launchMsg"), r.ok ? "已停止" : (r.error||"失败"), r.ok);
+  refreshProc();
+}
+async function refreshProc(){
+  const r = await api("/api/engine/process");
+  if (r && r.ok !== false) document.getElementById("procInfo").textContent = r.pid ? "引擎运行中（PID "+r.pid+"）" : "引擎未运行";
+}
+function openEngineDir(){
+  const d = document.getElementById("engine_dir").value.trim();
+  if (!d){ msg(document.getElementById("edMsg"), "先填引擎目录路径", false); return; }
+  api("/api/config", "PUT", { engine_dir: d }).then(()=>{});
+  api("/api/engine/open?d=" + encodeURIComponent(d)).then(() => {});
+  msg(document.getElementById("edMsg"), "已尝试打开 "+d, true);
+}
+
+/* ============ 备份 / 日志 ============ */
+async function backupConfig(){
+  const r = await api("/api/config/backup");
+  if (!r.ok || !r.url){ msg(document.getElementById("bkMsg"), r.error||"备份失败", false); return; }
+  const a = document.createElement("a"); a.href = r.url; a.download = ""; a.click();
+  msg(document.getElementById("bkMsg"), "备份已下载", true);
+}
+async function restoreConfig(){
+  const txt = document.getElementById("restore_box").value.trim();
+  if (!txt){ msg(document.getElementById("bkMsg"), "先把备份 JSON 粘进来", false); return; }
+  const r = await api("/api/config/restore", "POST", { bundle: txt });
+  msg(document.getElementById("bkMsg"), r.ok ? "已恢复，建议刷新页面" : (r.error||"恢复失败"), r.ok);
+}
+async function loadLogs(){
+  msg(document.getElementById("lgMsg"), "加载中…", true);
+  const r = await api("/api/logs");
+  if (r.ok !== false && r.logs !== undefined){ document.getElementById("logbox").textContent = r.logs || "（暂无日志）"; msg(document.getElementById("lgMsg"), "已刷新", true); }
+  else msg(document.getElementById("lgMsg"), r.error||"读取失败", false);
+}
+
+/* ============ 选盘 ============ */
+function pickDisk(inputId){
+  document.getElementById("diskOverlay").style.display = "flex";
+  const list = document.getElementById("diskList");
+  api("/api/disks").then(r=>{
+    list.innerHTML = (r.disks||[]).map(d=>'<div style="margin-bottom:8px"><button style="width:100%;text-align:left" onclick="setDir(\''+inputId+'\',\''+d.path+'\')">'+esc(d.path)+'</button></div>').join("") || '<p class="muted">没找到可用盘符</p>';
+  });
+}
+async function setDir(inputId, p){
+  document.getElementById(inputId).value = p;
+  if (inputId === "engine_dir") await api("/api/config", "PUT", { engine_dir: p });
+  closeDisk();
+}
+function closeDisk(){ document.getElementById("diskOverlay").style.display = "none"; }
+
+/* ============ 载入 ============ */
+async function refreshAll(){
+  const cfgR = await api("/api/config");
+  if (cfgR.ok !== false) { Cfg = cfgR.config; syncInputs(Cfg); }
+  const stR = await api("/api/styles");
+  if (stR.ok !== false) { styleRows = (stR.styles||[]).map(s=>({ name:s.name, model:s.model||"", positive:s.positive||"", negative:s.negative||"", params:s.params||{} })); }
+  const bwR = await api("/api/badwords");
+  if (bwR.ok !== false) document.getElementById("badwords").value = (bwR.words||[]).join(NL);
+  const psR = await api("/api/presets");
+  if (psR.ok !== false && Array.isArray(psR.presets)) {
+    Psets = psR.presets;
+    psActive = psR.active || (Psets[0] && Psets[0].name) || "";
+    renderPresets();
+  }
+  const mpR = await api("/api/modelpresets");
+  if (mpR.ok !== false) Mp = mpR.presets || [];
+  const dR = await api("/api/download");
+  if (dR.ok !== false) {
+    const book = document.getElementById("dlbook");
+    const recs = dR.records || [];
+    book.innerHTML = recs.length ? recs.map(rec=>'<tr><td>'+esc(rec.file)+'</td><td>'+fmtSize(rec.size)+'</td><td>'+esc(rec.time||"")+'</td><td>'+statusTag(rec)+'</td><td>'+(rec.target?'<span class="tag deployed">已部署</span>':'')+'</td></tr>').join("") : '<tr><td colspan="5" class="muted">还没有下载记录</td></tr>';
+  }
+  renderMp(); renderChips(); renderRecs();
+  showDlSrc();
+  loadStatus(); loadHealth(); await refreshDeployList(); refreshProc(); pollInstall();
+  renderStyles();
+  msg(document.getElementById("srMsg"), "", true);
+}
+refreshAll();
+setInterval(() => { loadStatus(); loadHealth(); refreshDl(); refreshProc(); }, 15000);
+</script>
+</body>
+</html>
