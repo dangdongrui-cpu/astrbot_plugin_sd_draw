@@ -1,0 +1,25 @@
+# 非商业使用许可 / Non-Commercial License
+
+Copyright (c) 2026 dangdongrui-cpu
+
+## 中文
+
+本许可适用于本仓库（astrbot_plugin_sd_draw）中的全部源代码、配置、文档及其衍生物。
+
+1. **授权范围**：任何人可以免费使用、复制、修改、合并、发布、分发本项目，以及将本项目用于个人学习、研究与自建用途。
+2. **非商业限制**：**禁止任何形式的商业用途**。包括但不限于：将本项目或其修改版作为商品出售、出租、付费授权；集成为付费产品或付费服务的一部分；在带有商业广告、付费会员、付费接口转售等营利性质的场景中部署运行；以本项目为基础提供收费代部署、代运维、代开发服务。
+3. **保留声明**：再分发本项目或其修改版、衍生物时，必须完整保留本版权声明与本许可全文，并在显著位置注明原作者 dangdongrui-cpu 及项目来源链接。修改后的版本须明确标注已作修改。
+4. **额外授权**：如需商业用途，必须事先取得版权人 dangdongrui-cpu 的书面授权。未取得授权前的任何商业使用均属违约。
+5. **免责声明**：本项目按「现状」提供，不附带任何明示或默示的担保，包括但不限于适销性、特定用途适用性与不侵权担保。作者不对使用本项目造成的任何直接或间接损失、数据丢失、服务中断或法律风险承担责任。使用者自行承担全部风险与合规责任。
+6. **许可终止**：违反本许可任一条款，本许可自动终止，使用者须立即停止使用并删除全部副本。
+
+## English
+
+This license applies to all source code, configuration, documentation and derivatives in this repository (astrbot_plugin_sd_draw).
+
+1. **Grant**: Everyone is free to use, copy, modify, merge, publish and redistribute this project, and to use it for personal study, research and self-hosted purposes, at no charge.
+2. **Non-Commercial Restriction**: **Any commercial use is prohibited.** This includes, without limitation: selling, renting or paid-licensing this project or modified versions; bundling it into a paid product or paid service; deploying it in revenue-generating contexts such as commercial advertising, paid memberships or reselling paid API access; offering paid deployment, maintenance or development services based on this project.
+3. **Attribution**: Redistributions of this project, modified versions or derivatives must retain this copyright notice and the full text of this license, and must clearly credit the original author dangdongrui-cpu together with a link to the project source. Modified versions must be marked as modified.
+4. **Additional Permission**: Commercial use requires prior written permission from the copyright holder, dangdongrui-cpu. Any commercial use without such permission is a breach of this license.
+5. **Disclaimer**: This project is provided "AS IS", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and noninfringement. The author shall not be liable for any direct or indirect damage, data loss, service interruption or legal risk arising from the use of this project. Users bear all risks and compliance responsibilities.
+6. **Termination**: Any violation of these terms automatically terminates this license, and the violator must immediately stop using the project and delete all copies.
